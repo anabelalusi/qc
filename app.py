@@ -51,7 +51,7 @@ html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
     font-size: 2.2rem; font-weight: 600; color: #e6edf3;
     line-height: 1.1; margin-bottom: 0.3rem;
 }
-.solar-sub { color: #8b949e; font-size: 0.9rem; margin-bottom: 1.5rem; }
+.solar-sub { color: #8b949e; font-size: 1.1rem; margin-bottom: 1.5rem; }
 
 .section-badge {
     display: inline-block; font-family: 'IBM Plex Mono', monospace;
@@ -63,7 +63,7 @@ html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
     font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem;
     font-weight: 500; color: #e6edf3; margin-bottom: 0.2rem;
 }
-.section-desc { color: #8b949e; font-size: 0.83rem; margin-bottom: 1rem; }
+.section-desc { color: #8b949e; font-size: 1.0rem; margin-bottom: 1rem; }
 
 .metric-row { display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
 .metric-card {
@@ -71,14 +71,14 @@ html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
     padding: 0.8rem 1.1rem; flex: 1; min-width: 120px;
 }
 .metric-label {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: #8b949e;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: #8b949e;
     text-transform: uppercase; letter-spacing: 0.1em;
 }
 .metric-value {
     font-family: 'IBM Plex Mono', monospace; font-size: 1.45rem;
     font-weight: 600; color: #f0a500;
 }
-.metric-sub { font-size: 0.72rem; color: #8b949e; }
+.metric-sub { font-size: 0.85rem; color: #8b949e; }
 
 .filter-box {
     background: #161b22; border: 1px solid #21262d; border-left: 3px solid #f0a500;
@@ -88,7 +88,7 @@ html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
     font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; font-weight: 600;
     color: #f0a500; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem;
 }
-.filter-box-ref { font-size: 0.78rem; color: #8b949e; margin-top: 0.4rem; font-style: italic; }
+.filter-box-ref { font-size: 0.9rem; color: #8b949e; margin-top: 0.4rem; font-style: italic; }
 
 .flag-summary {
     background: #0d1117; border: 1px solid #21262d; border-radius: 4px;
