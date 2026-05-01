@@ -571,7 +571,7 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
     # Botón para limpiar flags manuales (opcional pero útil)
     if st.button(f"Limpiar inspección visual de {año}", key=f"clear_{año}"):
         st.session_state["manual_flags"] = {t for t in st.session_state["manual_flags"] if t.year != año}
-        
+        st.rerun()
 
     # ── flag_qc = OR de todos ─────────────────────────────────────────────────
     df_out = actualizar_flag_qc(df_out)
@@ -601,7 +601,7 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
 # ─── App principal ────────────────────────────────────────────────────────────
 
 def main():
-    st.markdown('<div class="solar-title">☀ Solar QC</div>', unsafe_allow_html=True)
+    st.markdown('<div class="solar-title">🌞 Solar QC</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="solar-sub">Control de calidad de series de irradiancia solar — '
         'GHI · DHI · DNI · PAR</div>',
