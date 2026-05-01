@@ -481,13 +481,15 @@ def render_sidebar():
 
 def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
     """
-    Muestra los filtros opcionales y actualiza flag_1 / flag_2.
-    Devuelve el df del año con los flags actualizados.
-    Convenio BSRN: 0 = válido, 1 = descartado.
+    Configuración de flags: 
+    1. Explicación general
+    2. FLAG_1: Inspección visual (Manual)
+    3. FLAG_2: Altura solar (Auto/Ajustable)
+    4. FLAG_3: Índice kt (Físico)
     """
+    # ─── 1. EXPLICACIÓN INICIAL ──────────────────────────────────────────
     st.markdown("---")
-    st.markdown('<div class="section-badge">Flags opcionales</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">¿Querés marcar datos con algún flag automático?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-badge">Flags</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="section-desc">'
         'Activar un flag <b>no elimina</b> los datos — los marca con 1 en la columna correspondiente. '
@@ -497,25 +499,41 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
         unsafe_allow_html=True,
     )
 
-    # Leyenda de flags
+    # Leyenda de convenio (BSRN)
     st.markdown(
         '<div class="flag-legend">'
-        'Convenio <b>BSRN</b>: &nbsp;'
-        '<code>0</code> = válido &nbsp;·&nbsp; <code>1</code> = descartado<br>'
-        '<code>flag_1</code> altura solar &lt; 7° &nbsp;·&nbsp; '
-        '<code>flag_2</code> kt &gt; 1.35 &nbsp;·&nbsp; '
-        '<code>flag_3</code> inspección visual (Etapa 2) &nbsp;·&nbsp; '
-        '<code>flag_qc</code> OR de todos'
+        'Convenio <b>BSRN</b>: &nbsp; <code>0</code> = válido &nbsp;·&nbsp; <code>1</code> = descartado<br>'
+        '<code>flag_1</code> Inspección visual &nbsp;·&nbsp; '
+        '<code>flag_2</code> Altura solar &nbsp;·&nbsp; '
+        '<code>flag_3</code> Índice kt > 1.35'
         '</div>',
         unsafe_allow_html=True,
     )
 
     df_out = df_yr.copy()
 
-    # ── flag_1 — altura solar ──────────────────────────────────────────────────
+    # ─── 2. FLAG_1: INSPECCIÓN VISUAL (MANUAL) ──────────────────────────
     st.markdown(
         '<div class="filter-box">'
-        '<div class="filter-box-title">flag_1 — Altura solar mínima</div>'
+        '<div class="filter-box-title">FLAG_1 — INSPECCIÓN VISUAL (MANUAL)</div>'
+        'Filtro derivado de la selección manual con la herramienta Lasso/Box en los gráficos superiores. '
+        'Ideal para eliminar sombras de obstáculos conocidos.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    
+    # Mapeo de la selección manual al FLAG_1
+    df_out["flag_1"] = 0
+    df_out.loc[df_out.index.isin(st.session_state["manual_flags"]), "flag_1"] = 1
+
+    if st.button(f"Limpiar inspección visual de {año}", key=f"clear_{año}"):
+        st.session_state["manual_flags"] = {t for t in st.session_state["manual_flags"] if t.year != año}
+        st.rerun()
+
+    # ─── 3. FLAG_2: ALTURA SOLAR MÍNIMA ──────────────────────────────────
+    st.markdown(
+        '<div class="filter-box">'
+        '<div class="filter-box-title">FLAG_2 — Altura solar mínima</div>'
         'Registros con el Sol muy cerca del horizonte; la incertidumbre suele ser más alta.'
         '<div class="filter-box-ref">'
         'Ref.: Alonso-Suárez, R. et al. (2024) '
@@ -525,72 +543,45 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
         unsafe_allow_html=True,
     )
     
-    # --- NUEVO: Controles en dos columnas ---
-    col_f1_check, col_f1_num = st.columns([3, 1])
-    
-    with col_f1_check:
-        # Añadimos espacio vertical para alinear con el input numérico
+    col_f2_check, col_f2_num = st.columns([3, 1])
+    with col_f2_check:
         st.markdown("<br>", unsafe_allow_html=True)
-        apply_f1 = st.checkbox(f"Activar flag_1 [{año}]", key=f"f1_check_{año}")
-        
-    with col_f1_num:
-        limite_altura = st.number_input(
-            "Límite (°)", 
-            min_value=0.0, max_value=25.0, value=7.0, step=1.0, 
-            key=f"f1_val_{año}"
-        )
-    # ----------------------------------------
+        apply_f2 = st.checkbox(f"Activar flag_2 [{año}]", key=f"f2_check_{año}")
+    with col_f2_num:
+        limite_altura = st.number_input("Límite (°)", 0.0, 25.0, 7.0, key=f"f2_val_{año}")
 
-    df_out["flag_1"] = np.where(
-        apply_f1 & (df_out["altura_solar"] < np.radians(limite_altura)), 1, 0
-    )
+    df_out["flag_2"] = np.where(apply_f2 & (df_out["altura_solar"] < np.radians(limite_altura)), 1, 0)
 
-    # ── flag_2 — kt ───────────────────────────────────────────────────────────
+    # ─── 4. FLAG_3: ÍNDICE DE CLARIDAD kt ───────────────────────────────
     st.markdown(
         '<div class="filter-box">'
-        '<div class="filter-box-title">flag_2 — Índice de claridad kt &gt; 1.35</div>'
+        '<div class="filter-box-title">FLAG_3 — Índice de claridad kt > 1.35</div>'
         'Suele indicar reflexiones especulares o fallas del sensor.'
         '<div class="filter-box-ref">'
-        'Ref. 1: Geuder, N. et al. (2015) '
-        '<a href="https://doi.org/10.1016/j.egypro.2015.03.205" target="_blank">10.1016/j.egypro.2015.03.205</a><br>'
-        'Ref. 2: Gueymard, C. A. (2017) '
-        '<a href="https://doi.org/10.1016/j.solener.2017.05.004" target="_blank">10.1016/j.solener.2017.05.004</a>'        '</div>'
+        'Ref. 1: Geuder, N. et al. (2015) <a href="https://doi.org/10.1016/j.egypro.2015.03.205" target="_blank">DOI</a><br>'
+        'Ref. 2: Gueymard, C. A. (2017) <a href="https://doi.org/10.1016/j.solener.2017.05.004" target="_blank">DOI</a>'
+        '</div>'
         '</div>',
         unsafe_allow_html=True,
     )
-    apply_f2 = st.checkbox(f"Activar flag_2 — kt > 1.35  [{año}]", key=f"f2_{año}")
-    df_out["flag_2"] = np.where(
-        apply_f2 & (df_out["kt"] > 1.35), 1, 0
-    )
+    apply_f3 = st.checkbox(f"Activar flag_3 — kt > 1.35 [{año}]", key=f"f3_check_{año}")
+    df_out["flag_3"] = np.where(apply_f3 & (df_out["kt"] > 1.35), 1, 0)
 
-    # ── flag_3 — Inspección Visual (Etapa 2) ──────────────────────────────────
-    # Buscamos si el índice de este año está en nuestra "lista negra" manual
-    df_out["flag_3"] = 0
-    df_out.loc[df_out.index.isin(st.session_state["manual_flags"]), "flag_3"] = 1
-
-    # Botón para limpiar flags manuales (opcional pero útil)
-    if st.button(f"Limpiar inspección visual de {año}", key=f"clear_{año}"):
-        st.session_state["manual_flags"] = {t for t in st.session_state["manual_flags"] if t.year != año}
-        st.rerun()
-
-    # ── flag_qc = OR de todos ─────────────────────────────────────────────────
+    # Actualizar flag_qc consolidado
     df_out = actualizar_flag_qc(df_out)
 
-    # ── Resumen ───────────────────────────────────────────────────────────────
+    # Resumen visual al final de la sección
     r = resumen_flags(df_out)
     pct_desc = 100 * r["n_descartados"] / r["n_total"] if r["n_total"] > 0 else 0
-
     st.markdown(
         f'<div class="flag-summary">'
-        f'<b>{año}</b> — {r["n_total"]:,} registros totales<br>'
-        f'&nbsp;&nbsp;flag_1 (alt&lt;7°): <b>{r["n_f1"]:,}</b> marcados<br>'
-        f'&nbsp;&nbsp;flag_2 (kt&gt;1.35): <b>{r["n_f2"]:,}</b> marcados<br>'
-        f'&nbsp;&nbsp;flag_3 (visual): <b>{r["n_f3"]:,}</b> marcados<br>'
+        f'<b>Resumen {año}</b> — {r["n_total"]:,} registros<br>'
+        f'&nbsp;&nbsp;flag_1 (Visual): <b>{r["n_f1"]:,}</b> &nbsp;·&nbsp; '
+        f'flag_2 (Altura): <b>{r["n_f2"]:,}</b> &nbsp;·&nbsp; '
+        f'flag_3 (kt): <b>{r["n_f3"]:,}</b><br>'
         f'<br>'
-        f'&nbsp;&nbsp;flag_qc = 0 <span class="ok">✓ válidos</span>: '
-        f'<b>{r["n_validos"]:,}</b> &nbsp;·&nbsp; '
-        f'flag_qc = 1 <span class="disc">✗ descartados</span>: '
-        f'<b>{r["n_descartados"]:,}</b> ({pct_desc:.1f} %)'
+        f'&nbsp;&nbsp;flag_qc = 0 <span class="ok">✓ válidos</span>: <b>{r["n_validos"]:,}</b> &nbsp;·&nbsp; '
+        f'flag_qc = 1 <span class="disc">✗ descartados</span>: <b>{r["n_descartados"]:,}</b> ({pct_desc:.1f} %)'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -836,18 +827,20 @@ datetime,ghi_wm2,clear_sky
     else:
         df_final = df.copy()
 
-    # Resumen global de flags
+    # ── Resumen global de flags (Final de main) ───────────────────────────────
     r_global = resumen_flags(df_final)
     pct = 100 * r_global["n_descartados"] / r_global["n_total"] if r_global["n_total"] > 0 else 0
+    
     st.markdown(
         f'<div class="flag-summary">'
-        f'<b>Resumen global</b> — {r_global["n_total"]:,} registros<br>'
-        f'&nbsp;&nbsp;flag_1: <b>{r_global["n_f1"]:,}</b> &nbsp;·&nbsp; '
-        f'flag_2: <b>{r_global["n_f2"]:,}</b> &nbsp;·&nbsp; '
-        f'flag_3: <b>{r_global["n_f3"]:,}</b><br>'
-        f'&nbsp;&nbsp;flag_qc = 0 <span class="ok">✓ válidos</span>: <b>{r_global["n_validos"]:,}</b>'
+        f'<b>Resumen global del dataset</b> — {r_global["n_total"]:,} registros totales<br>'
+        f'&nbsp;&nbsp;flag_1 (Inspección Visual): <b>{r_global["n_f1"]:,}</b> marcados<br>'
+        f'&nbsp;&nbsp;flag_2 (Altura Solar): <b>{r_global["n_f2"]:,}</b> marcados<br>'
+        f'&nbsp;&nbsp;flag_3 (Índice kt > 1.35): <b>{r_global["n_f3"]:,}</b> marcados<br>'
+        f'<br>'
+        f'&nbsp;&nbsp;flag_qc = 0 <span class="ok">✓ Válidos</span>: <b>{r_global["n_validos"]:,}</b>'
         f' &nbsp;·&nbsp; '
-        f'flag_qc = 1 <span class="disc">✗ descartados</span>: <b>{r_global["n_descartados"]:,}</b>'
+        f'flag_qc = 1 <span class="disc">✗ Descartados</span>: <b>{r_global["n_descartados"]:,}</b>'
         f' ({pct:.1f} %)'
         f'</div>',
         unsafe_allow_html=True,
