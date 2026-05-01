@@ -353,62 +353,74 @@ def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figu
     return fig
 
 def fig_kt_2d(df_yr: pd.DataFrame, año: int) -> go.Figure:
-    # Filtro de registros con sol a más de 3° de elevación (masa de aire razonable)
-    d = df_yr[df_yr["CZ"] > 0.05].copy()
+    # 1. Preparación de datos (reproduciendo tu lógica de plot_kt_2d)
+    dfy = df_yr.copy()
+    is_leap = pd.Timestamp(year=año, month=12, day=31).is_leap_year
+    ndays = 366 if is_leap else 365
     
-    # 1. Validación defensiva para evitar errores si no hay datos
-    if d.empty:
-        fig = go.Figure()
-        fig.update_layout(BASE_LAYOUT, height=410)
-        fig.update_layout(title=dict(text=f"{año} — kt 2D (Sin datos)", font=dict(color=RED)))
-        return fig
+    # Parámetros definidos en tu función original
+    hora_min, hora_max = 5.0, 22.0
+    vmin, vmax = 0.0, 1.2
+    min_min, min_max = int(hora_min * 60), int(hora_max * 60)
 
-    d["hora"] = d.index.hour + d.index.minute / 60.0
-    d["doy"]  = d.index.dayofyear
-    mes_doy   = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
-    mes_nom   = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    # Filtrar CZ <= 0 para no ensuciar el kt nocturno
+    dfy.loc[dfy["CZ"] <= 0, "kt"] = np.nan
+    
+    doy_arr = dfy.index.dayofyear
+    min_arr = dfy.index.hour * 60 + dfy.index.minute
+    
+    # 2. Creación de la grilla (Pivot Table)
+    # Esto asegura que cada minuto y cada día tengan su celda, igual que en tu imshow
+    kt_grid = (
+        pd.DataFrame({"doy": doy_arr, "min": min_arr, "kt": dfy["kt"].values})
+        .pivot_table(index="min", columns="doy", values="kt", aggfunc="mean")
+        .reindex(index=np.arange(min_min, min_max + 1), columns=np.arange(1, ndays + 1))
+    )
 
-    # Definimos la misma escala de tu tesis (YlOrBr invertida)
-    yl_or_br_rev = [
-        [0.0, "#662506"], [0.2, "#993404"], [0.4, "#cc4c02"],
-        [0.6, "#ec7014"], [0.8, "#fe9929"], [1.0, "#ffffd4"]
-    ]
+    # Límites reales de datos para el eje X (como en tu ax.set_xlim)
+    finite_kt = dfy["kt"].dropna()
+    doy_min_data = finite_kt.index.dayofyear.min() if not finite_kt.empty else 1
+    doy_max_data = finite_kt.index.dayofyear.max() if not finite_kt.empty else ndays
 
-    fig = go.Figure(go.Histogram2d(
-        x=d["doy"].values, 
-        y=d["hora"].values,
-        z=np.clip(d["kt"].values, 0, 1.35),
-        histfunc="avg", 
-        nbinsx=365, 
-        nbinsy=48,
-        colorscale=yl_or_br_rev, # Consistencia visual con el diagrama solar
-        zmin=0.1, 
-        zmax=1.0,
+    # Configuración de etiquetas de tiempo (cada 120 min)
+    yticks_vals = np.arange(min_min, min_max + 1, 120)
+    yticks_text = [f"{m//60:02d}:{m%60:02d}" for m in yticks_vals]
+
+    # 3. Creación del gráfico con Heatmap[cite: 1]
+    fig = go.Figure(go.Heatmap(
+        z=kt_grid.values,
+        x=kt_grid.columns.values,
+        y=kt_grid.index.values,
+        colorscale='magma', # Tu escala de color original[cite: 1]
+        zmin=vmin, zmax=vmax,
         colorbar=dict(
-            # Nueva sintaxis para evitar el ValueError
-            title=dict(text="$k_t$", font=dict(color=MUTED, size=11)),
-            thickness=12,
-            tickfont=dict(color=MUTED, size=10)
+            title=dict(text="$k_t$ (adim.)", font=dict(size=11)),
+            thickness=15,
+            len=0.9
         ),
+        hovertemplate="Día: %{x}<br>Minuto: %{y}<br>kt: %{z:.3f}<extra></extra>"
     ))
 
-    # 2. Aplicamos layout en dos pasos para evitar el TypeError de argumentos duplicados
+    # 4. Ajustes de Layout[cite: 1]
     fig.update_layout(BASE_LAYOUT)
     fig.update_layout(
-        title=dict(text=f"{año} — $k_t$ 2D (Hora vs. Día del año)", font=dict(color="#e6edf3", size=12)),
+        title=dict(text=f"Mapa de $k_t$ — {año}", font=dict(size=13)),
         xaxis=dict(
-            tickvals=mes_doy, 
-            ticktext=mes_nom, 
-            title="Día del año",
-            gridcolor="rgba(128, 128, 128, 0.1)"
+            title=f"Día del año (1–{ndays})",
+            range=[doy_min_data, doy_max_data],
+            tickvals=np.arange(1, ndays + 1, 30), # Ticks cada 30 días[cite: 1]
+            gridcolor="rgba(128, 128, 128, 0.2)"
         ),
         yaxis=dict(
-            range=[4, 21], 
-            title="Hora solar",
-            gridcolor="rgba(128, 128, 128, 0.1)"
+            title="Hora (hh:mm)",
+            tickvals=yticks_vals,
+            ticktext=yticks_text,
+            gridcolor="rgba(128, 128, 128, 0.2)"
         ),
-        height=410,
+        height=450,
+        margin=dict(t=60, b=60, l=80, r=20)
     )
+
     return fig
 
 
