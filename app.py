@@ -132,6 +132,33 @@ html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
     color: #f0a500 !important; border-bottom-color: #f0a500 !important;
 }
 hr { border-color: #21262d; margin: 1.2rem 0; }
+
+/* --- MEJORAS DE LEGIBILIDAD EN SIDEBAR --- */
+
+/* Títulos del sidebar (h3) en Amarillo Solar */
+[data-testid="stSidebar"] h3 {
+    color: #f0a500 !important;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* Etiquetas de inputs y texto general en Blanco */
+[data-testid="stSidebar"] label, 
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+    color: #ffffff !important;
+}
+
+/* Ajuste para los Radio Buttons (GHI, DHI, etc.) */
+[data-testid="stSidebar"] .st-eb {
+    color: #ffffff !important;
+}
+
+/* Los campos de entrada (inputs) con texto legible */
+[data-testid="stSidebar"] input {
+    color: #0d1117 !important; /* Texto oscuro dentro de cajas blancas */
+}
+            
 </style>
 """, unsafe_allow_html=True)
 
@@ -482,33 +509,46 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
     # ── flag_1 — altura solar ──────────────────────────────────────────────────
     st.markdown(
         '<div class="filter-box">'
-        '<div class="filter-box-title">flag_1 — Altura solar &lt; 7°</div>'
-        'Marca registros cuando el Sol está muy cerca del horizonte. '
-        'A esos ángulos la masa óptica de aire es grande y las mediciones '
-        'suelen ser poco confiables.'
+        '<div class="filter-box-title">flag_1 — Altura solar mínima</div>'
+        'Registros con el Sol muy cerca del horizonte; la incertidumbre suele ser más alta.'
         '<div class="filter-box-ref">'
-        'Ref.: Younes et al. (2005) <i>Sol. Energy</i> — '
-        'Roesch et al. (2011) <i>Atmos. Meas. Tech.</i>'
+        'Ref.: Alonso-Suárez, R. et al. (2024) '
+        '<i>Recomendaciones y Buenas Prácticas para la Medición y Registro de la Radiación Solar en Territorio.</i>'
         '</div>'
         '</div>',
         unsafe_allow_html=True,
     )
-    apply_f1 = st.checkbox(f"Activar flag_1 — altura solar < 7°  [{año}]", key=f"f1_{año}")
+    
+    # --- NUEVO: Controles en dos columnas ---
+    col_f1_check, col_f1_num = st.columns([3, 1])
+    
+    with col_f1_check:
+        # Añadimos espacio vertical para alinear con el input numérico
+        st.markdown("<br>", unsafe_allow_html=True)
+        apply_f1 = st.checkbox(f"Activar flag_1 [{año}]", key=f"f1_check_{año}")
+        
+    with col_f1_num:
+        limite_altura = st.number_input(
+            "Límite (°)", 
+            min_value=0.0, max_value=25.0, value=7.0, step=1.0, 
+            key=f"f1_val_{año}"
+        )
+    # ----------------------------------------
+
     df_out["flag_1"] = np.where(
-        apply_f1 & (df_out["altura_solar"] < np.radians(7)), 1, 0
+        apply_f1 & (df_out["altura_solar"] < np.radians(limite_altura)), 1, 0
     )
 
     # ── flag_2 — kt ───────────────────────────────────────────────────────────
     st.markdown(
         '<div class="filter-box">'
         '<div class="filter-box-title">flag_2 — Índice de claridad kt &gt; 1.35</div>'
-        'Marca valores físicamente imposibles: ninguna superficie horizontal puede '
-        'recibir más de ~135 % de la irradiancia de cielo claro. '
         'Suele indicar reflexiones especulares o fallas del sensor.'
         '<div class="filter-box-ref">'
-        'Ref.: Long &amp; Dutton (2002) <i>BSRN Tech. Rep.</i> — '
-        'Moradi (2009) <i>Sol. Energy</i>'
-        '</div>'
+        'Ref. 1: Geuder, N. et al. (2015) '
+        '<a href="https://doi.org/10.1016/j.egypro.2015.03.205" target="_blank">10.1016/j.egypro.2015.03.205</a><br>'
+        'Ref. 2: Gueymard, C. A. (2017) '
+        '<a href="https://doi.org/10.1016/j.solener.2017.05.004" target="_blank">10.1016/j.solener.2017.05.004</a>'        '</div>'
         '</div>',
         unsafe_allow_html=True,
     )
