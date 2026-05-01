@@ -286,42 +286,49 @@ def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figu
     mask  = (df_yr.index.month <= 6) if semestre == 1 else (df_yr.index.month >= 7)
     label = "Ene – Jun" if semestre == 1 else "Jul – Dic"
     
-    # Filtramos por semestre, sol sobre el horizonte y datos de kt válidos
-    d = df_yr[mask & (df_yr["CZ"] > 0)].dropna(subset=["kt"])
+    # 1. LIMPIEZA ROBUSTA: 
+    # Eliminamos cualquier fila que tenga NaN en azimut o altura, no solo en kt.
+    # Scattergl es muy sensible a valores no numéricos en los ejes.
+    d = df_yr[mask & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"])
 
-    # --- VALIDACIÓN DE DATOS ---
     if d.empty:
         fig = go.Figure()
+        fig.update_layout(BASE_LAYOUT)
         fig.update_layout(
-            **BASE_LAYOUT,
-            title=dict(text=f"{año} — {label} (Sin datos válidos para el diagrama)", 
-                       font=dict(color="#f85149", size=11)),
-            height=200 # Un alto menor para que no ocupe espacio vacío
+            title=dict(text=f"{año} — {label} (Sin datos válidos)", font=dict(color=RED, size=11)),
+            height=200
         )
         return fig
-    # ---------------------------
 
-    az    = np.degrees(d["azimutal"].values)
-    alt   = np.degrees(d["altura_solar"].values)
-    kt    = np.clip(d["kt"].values, 0, 1.5)
+    az  = np.degrees(d["azimutal"].values)
+    alt = np.degrees(d["altura_solar"].values)
+    kt  = np.clip(d["kt"].values, 0, 1.35)
 
+    # 2. CONFIGURACIÓN DEL GRÁFICO:
     fig = go.Figure(go.Scattergl(
         x=az, y=alt, mode="markers",
         marker=dict(
             color=kt,
             colorscale=[[0,"#1c2b3a"],[0.3,"#2563a8"],[0.65,AMBER],[1.0,"#ffffff"]],
             cmin=0, cmax=1.35, size=2, opacity=0.55,
-            colorbar=dict(title="kt", thickness=12, len=0.8,
-                          tickfont=dict(color=MUTED, size=10), titlefont=dict(color=MUTED)),
+            # Cambiamos a la sintaxis moderna de colorbar para evitar el ValueError
+            colorbar=dict(
+                title=dict(text="kt", font=dict(color=MUTED, size=10)),
+                thickness=12, 
+                len=0.8,
+                tickfont=dict(color=MUTED, size=10)
+            ),
         ),
         hovertemplate="az: %{x:.1f}°<br>alt: %{y:.1f}°<br>kt: %{marker.color:.3f}<extra></extra>",
     ))
+    
+    # 3. LAYOUT (usando el método seguro de dos llamadas para evitar duplicados)
     fig.update_layout(BASE_LAYOUT)
     fig.update_layout(
         title=dict(text=f"{año} — Diagrama solar ({label})", font=dict(color="#e6edf3", size=12)),
         xaxis_title="Azimut (°, Sur=0  Oeste>0)", 
         yaxis_title="Altura solar (°)",
-        yaxis={**BASE_LAYOUT["yaxis"], "range": [0, 90]},
+        yaxis=dict(range=[0, 90]), 
         height=430,
     )
     return fig
