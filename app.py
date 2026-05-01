@@ -284,55 +284,73 @@ def fig_serie(df: pd.DataFrame, titulo: str, año: int = None) -> go.Figure:
 
 def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figure:
     mask  = (df_yr.index.month <= 6) if semestre == 1 else (df_yr.index.month >= 7)
-    label = "Ene – Jun" if semestre == 1 else "Jul – Dic"
+    label = "Enero–junio" if semestre == 1 else "Julio–diciembre"
     
-    # 1. LIMPIEZA ROBUSTA: 
-    # Eliminamos cualquier fila que tenga NaN en azimut o altura, no solo en kt.
-    # Scattergl es muy sensible a valores no numéricos en los ejes.
-    d = df_yr[mask & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"])
+    # 1. Filtro y limpieza de datos
+    d = df_yr[mask & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"]).copy()
 
     if d.empty:
         fig = go.Figure()
-        fig.update_layout(BASE_LAYOUT)
-        fig.update_layout(
-            title=dict(text=f"{año} — {label} (Sin datos válidos)", font=dict(color=RED, size=11)),
-            height=200
-        )
+        fig.update_layout(BASE_LAYOUT, height=430)
         return fig
+
+    # 2. Tu lógica de ordenamiento: oscuros primero, claros encima
+    # Esto asegura que los puntos de mayor irradiancia no queden tapados
+    d = d.sort_values("kt", ascending=True)
 
     az  = np.degrees(d["azimutal"].values)
     alt = np.degrees(d["altura_solar"].values)
-    kt  = np.clip(d["kt"].values, 0, 1.35)
+    kt  = d["kt"].values
 
-    # 2. CONFIGURACIÓN DEL GRÁFICO:
+    # 3. Definición de la escala YlOrBr invertida (similar a Matplotlib)
+    # Usamos una interpolación que va de marrón oscuro a amarillo claro
+    yl_or_br_rev = [
+        [0.0, "#662506"], # Marrón oscuro (kt bajo/sombras)
+        [0.2, "#993404"],
+        [0.4, "#cc4c02"],
+        [0.6, "#ec7014"],
+        [0.8, "#fe9929"],
+        [1.0, "#ffffd4"]  # Amarillo muy claro (kt alto)
+    ]
+
     fig = go.Figure(go.Scattergl(
         x=az, y=alt, mode="markers",
         marker=dict(
             color=kt,
-            colorscale=[[0,"#1c2b3a"],[0.3,"#2563a8"],[0.65,AMBER],[1.0,"#ffffff"]],
-            cmin=0, cmax=1.35, size=2, opacity=0.55,
-            # Cambiamos a la sintaxis moderna de colorbar para evitar el ValueError
+            colorscale=yl_or_br_rev,
+            cmin=0.1, cmax=1.0, # Límites de tu código original
+            size=2.2,           # 's' de tu código
+            opacity=1,
             colorbar=dict(
-                title=dict(text="kt", font=dict(color=MUTED, size=10)),
-                thickness=12, 
-                len=0.8,
-                tickfont=dict(color=MUTED, size=10)
+                title=dict(text="$k_t$ (adim.)", font=dict(size=11)),
+                thickness=15,
+                len=0.9
             ),
         ),
         hovertemplate="az: %{x:.1f}°<br>alt: %{y:.1f}°<br>kt: %{marker.color:.3f}<extra></extra>",
     ))
+
+    # 4. Ajustes de Layout para imitar Matplotlib[cite: 1]
+    alt_max_real = alt.max() if len(alt) > 0 else 85
     
-    # 3. LAYOUT (usando el método seguro de dos llamadas para evitar duplicados)
     fig.update_layout(BASE_LAYOUT)
     fig.update_layout(
-        title=dict(text=f"{año} — Diagrama solar ({label})", font=dict(color="#e6edf3", size=12)),
-        xaxis_title="Azimut (°, Sur=0  Oeste>0)", 
-        yaxis_title="Altura solar (°)",
-        yaxis=dict(range=[0, 90]), 
+        title=dict(text=f"{label} {año}", font=dict(color="#e6edf3", size=13)),
+        xaxis=dict(
+            title="Azimut solar (°)",
+            autorange="reversed", # EQUIVALENTE A ax.invert_xaxis()[cite: 1]
+            gridcolor="rgba(128, 128, 128, 0.2)"
+        ),
+        yaxis=dict(
+            title="Altitud solar (°)",
+            range=[0, min(90, alt_max_real + 5)], # Límite dinámico[cite: 1]
+            gridcolor="rgba(128, 128, 128, 0.2)"
+        ),
         height=430,
+        margin=dict(t=60, b=60, l=80, r=20)
     )
+    
     return fig
-
 
 def fig_kt_2d(df_yr: pd.DataFrame, año: int) -> go.Figure:
     d = df_yr[df_yr["CZ"] > 0.05].copy()
