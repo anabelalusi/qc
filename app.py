@@ -285,7 +285,22 @@ def fig_serie(df: pd.DataFrame, titulo: str, año: int = None) -> go.Figure:
 def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figure:
     mask  = (df_yr.index.month <= 6) if semestre == 1 else (df_yr.index.month >= 7)
     label = "Ene – Jun" if semestre == 1 else "Jul – Dic"
-    d     = df_yr[mask & (df_yr["CZ"] > 0)].dropna(subset=["kt"])
+    
+    # Filtramos por semestre, sol sobre el horizonte y datos de kt válidos
+    d = df_yr[mask & (df_yr["CZ"] > 0)].dropna(subset=["kt"])
+
+    # --- VALIDACIÓN DE DATOS ---
+    if d.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            **BASE_LAYOUT,
+            title=dict(text=f"{año} — {label} (Sin datos válidos para el diagrama)", 
+                       font=dict(color="#f85149", size=11)),
+            height=200 # Un alto menor para que no ocupe espacio vacío
+        )
+        return fig
+    # ---------------------------
+
     az    = np.degrees(d["azimutal"].values)
     alt   = np.degrees(d["altura_solar"].values)
     kt    = np.clip(d["kt"].values, 0, 1.5)
