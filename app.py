@@ -322,7 +322,7 @@ def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figu
             size=2.2,           # 's' de tu código
             opacity=1,
             colorbar=dict(
-                title=dict(text="$k_t$ (adim.)", font=dict(size=11)),
+                title=dict(text="kt (adim.)", font=dict(size=11)),
                 thickness=15,
                 len=0.9
             ),
@@ -353,26 +353,60 @@ def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figu
     return fig
 
 def fig_kt_2d(df_yr: pd.DataFrame, año: int) -> go.Figure:
+    # Filtro de registros con sol a más de 3° de elevación (masa de aire razonable)
     d = df_yr[df_yr["CZ"] > 0.05].copy()
+    
+    # 1. Validación defensiva para evitar errores si no hay datos
+    if d.empty:
+        fig = go.Figure()
+        fig.update_layout(BASE_LAYOUT, height=410)
+        fig.update_layout(title=dict(text=f"{año} — kt 2D (Sin datos)", font=dict(color=RED)))
+        return fig
+
     d["hora"] = d.index.hour + d.index.minute / 60.0
     d["doy"]  = d.index.dayofyear
-    mes_doy   = [1,32,60,91,121,152,182,213,244,274,305,335]
-    mes_nom   = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"]
+    mes_doy   = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
+    mes_nom   = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+    # Definimos la misma escala de tu tesis (YlOrBr invertida)
+    yl_or_br_rev = [
+        [0.0, "#662506"], [0.2, "#993404"], [0.4, "#cc4c02"],
+        [0.6, "#ec7014"], [0.8, "#fe9929"], [1.0, "#ffffd4"]
+    ]
 
     fig = go.Figure(go.Histogram2d(
-        x=d["doy"].values, y=d["hora"].values,
-        z=np.clip(d["kt"].values, 0, 1.5),
-        histfunc="avg", nbinsx=365, nbinsy=48,
-        colorscale=[[0,BG],[0.15,"#1c2b3a"],[0.4,"#2563a8"],[0.75,AMBER],[1.0,"#ffffff"]],
-        zmin=0, zmax=1.35,
-        colorbar=dict(title="kt", thickness=12,
-                      tickfont=dict(color=MUTED, size=10), titlefont=dict(color=MUTED)),
+        x=d["doy"].values, 
+        y=d["hora"].values,
+        z=np.clip(d["kt"].values, 0, 1.35),
+        histfunc="avg", 
+        nbinsx=365, 
+        nbinsy=48,
+        colorscale=yl_or_br_rev, # Consistencia visual con el diagrama solar
+        zmin=0.1, 
+        zmax=1.0,
+        colorbar=dict(
+            # Nueva sintaxis para evitar el ValueError
+            title=dict(text="$k_t$", font=dict(color=MUTED, size=11)),
+            thickness=12,
+            tickfont=dict(color=MUTED, size=10)
+        ),
     ))
+
+    # 2. Aplicamos layout en dos pasos para evitar el TypeError de argumentos duplicados
     fig.update_layout(BASE_LAYOUT)
     fig.update_layout(
-        title=dict(text=f"{año} — kt 2D (hora vs día del año)", font=dict(color="#e6edf3", size=12)),
-        xaxis={**BASE_LAYOUT["xaxis"], "tickvals": mes_doy, "ticktext": mes_nom, "title": "Día del año"},
-        yaxis={**BASE_LAYOUT["yaxis"], "range": [4, 21], "title": "Hora solar"},
+        title=dict(text=f"{año} — $k_t$ 2D (Hora vs. Día del año)", font=dict(color="#e6edf3", size=12)),
+        xaxis=dict(
+            tickvals=mes_doy, 
+            ticktext=mes_nom, 
+            title="Día del año",
+            gridcolor="rgba(128, 128, 128, 0.1)"
+        ),
+        yaxis=dict(
+            range=[4, 21], 
+            title="Hora solar",
+            gridcolor="rgba(128, 128, 128, 0.1)"
+        ),
         height=410,
     )
     return fig
