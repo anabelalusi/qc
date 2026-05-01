@@ -571,7 +571,7 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
     # Botón para limpiar flags manuales (opcional pero útil)
     if st.button(f"Limpiar inspección visual de {año}", key=f"clear_{año}"):
         st.session_state["manual_flags"] = {t for t in st.session_state["manual_flags"] if t.year != año}
-        st.rerun()
+        
 
     # ── flag_qc = OR de todos ─────────────────────────────────────────────────
     df_out = actualizar_flag_qc(df_out)
@@ -796,7 +796,6 @@ datetime,ghi_wm2,clear_sky
                     d_plot = df_yr[(df_yr.index.month <= 6) & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"]).sort_values("kt")
                     puntos = d_plot.index[sel1["selection"]["point_indices"]]
                     st.session_state["manual_flags"].update(puntos)
-                    st.rerun()
 
             # --- Semestre 2 ---
             with col_s2:
@@ -807,7 +806,6 @@ datetime,ghi_wm2,clear_sky
                     d_plot = df_yr[(df_yr.index.month >= 7) & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"]).sort_values("kt")
                     puntos = d_plot.index[sel2["selection"]["point_indices"]]
                     st.session_state["manual_flags"].update(puntos)
-                    st.rerun()
 
             # kt 2D
             st.plotly_chart(fig_kt_2d(df_yr, año), use_container_width=True)
