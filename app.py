@@ -133,32 +133,12 @@ html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
 }
 hr { border-color: #21262d; margin: 1.2rem 0; }
 
-/* --- MEJORAS DE LEGIBILIDAD EN SIDEBAR --- */
+/* Sidebar: Solar QC en Amarillo, etiquetas en Blanco */
+[data-testid="stSidebar"] h3 { color: #f0a500 !important; font-family: 'IBM Plex Mono', monospace; }
+[data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: #ffffff !important; }
+[data-testid="stSidebar"] .st-eb { color: #ffffff !important; }
+[data-testid="stSidebar"] input { color: #0d1117 !important; }
 
-/* Títulos del sidebar (h3) en Amarillo Solar */
-[data-testid="stSidebar"] h3 {
-    color: #f0a500 !important;
-    font-family: 'IBM Plex Mono', monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-}
-
-/* Etiquetas de inputs y texto general en Blanco */
-[data-testid="stSidebar"] label, 
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    color: #ffffff !important;
-}
-
-/* Ajuste para los Radio Buttons (GHI, DHI, etc.) */
-[data-testid="stSidebar"] .st-eb {
-    color: #ffffff !important;
-}
-
-/* Los campos de entrada (inputs) con texto legible */
-[data-testid="stSidebar"] input {
-    color: #0d1117 !important; /* Texto oscuro dentro de cajas blancas */
-}
-            
 </style>
 """, unsafe_allow_html=True)
 
@@ -357,6 +337,32 @@ def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figu
         hovertemplate="az: %{x:.1f}°<br>alt: %{y:.1f}°<br>kt: %{marker.color:.3f}<extra></extra>",
     ))
 
+def fig_diagrama_solar(df_yr, año, semestre):
+    # Filtro estricto para evitar ValueErrors en Scattergl
+    mask = (df_yr.index.month <= 6) if semestre == 1 else (df_yr.index.month >= 7)
+    d = df_yr[mask & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"]).copy()
+    
+    if d.empty:
+        return go.Figure().update_layout(BASE_LAYOUT, title="Sin datos")
+
+    # Estilo tesis: Ordenar para resaltar sombras
+    d = d.sort_values("kt", ascending=True)
+    
+    fig = go.Figure(go.Scattergl(
+        x=np.degrees(d["azimutal"]), y=np.degrees(d["altura_solar"]),
+        mode="markers",
+        marker=dict(
+            color=d["kt"], cmin=0.1, cmax=1.0, size=2.2,
+            colorscale=[[0, "#662506"], [0.5, "#ec7014"], [1, "#ffffd4"]], # YlOrBr rev
+            colorbar=dict(title=dict(text="$k_t$", font=dict(size=10)))
+        )
+    ))
+    fig.update_layout(BASE_LAYOUT)
+    fig.update_layout(xaxis=dict(autorange="reversed"), height=430) # Eje invertido
+    return fig
+
+    
+
     # 4. Ajustes de Layout para imitar Matplotlib[cite: 1]
     alt_max_real = alt.max() if len(alt) > 0 else 85
     
@@ -455,7 +461,7 @@ def fig_kt_2d(df_yr: pd.DataFrame, año: int) -> go.Figure:
 
 def render_sidebar():
     with st.sidebar:
-        st.markdown("### ☀ Solar QC")
+        st.markdown("### 🌞 Solar QC")
         variable = st.radio("Variable", ["GHI", "DHI", "DNI", "PAR"], index=0)
         if variable != "GHI":
             st.warning(f"Módulo **{variable}** en desarrollo.")
