@@ -557,8 +557,15 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
         apply_f2 & (df_out["kt"] > 1.35), 1, 0
     )
 
-    # ── flag_3 reservado ──────────────────────────────────────────────────────
-    df_out["flag_3"] = 0   # se poblará en Etapa 2 (inspección visual de sombras)
+    # ── flag_3 — Inspección Visual (Etapa 2) ──────────────────────────────────
+    # Buscamos si el índice de este año está en nuestra "lista negra" manual
+    df_out["flag_3"] = 0
+    df_out.loc[df_out.index.isin(st.session_state["manual_flags"]), "flag_3"] = 1
+
+    # Botón para limpiar flags manuales (opcional pero útil)
+    if st.button(f"Limpiar inspección visual de {año}", key=f"clear_{año}"):
+        st.session_state["manual_flags"] = {t for t in st.session_state["manual_flags"] if t.year != año}
+        st.rerun()
 
     # ── flag_qc = OR de todos ─────────────────────────────────────────────────
     df_out = actualizar_flag_qc(df_out)
@@ -655,6 +662,8 @@ datetime,ghi_wm2,clear_sky
     st.divider()
 
     # ── Paso 2: Mapeo ──────────────────────────────────────────────────────────
+    if "manual_flags" not in st.session_state:
+        st.session_state["manual_flags"] = set() # Guardaremos los timestamps marcados
     st.markdown('<div class="section-badge">Paso 2</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Mapeá las columnas</div>', unsafe_allow_html=True)
 
@@ -767,22 +776,37 @@ datetime,ghi_wm2,clear_sky
             )
             st.caption("Botones superiores: zoom rápido por mes. Rangeslider: zoom libre.")
 
-            # Diagramas solares
+            # Diagramas solares con SELECCIÓN ACTIVA
             col_s1, col_s2 = st.columns(2)
+            
+            # --- Semestre 1 ---
             with col_s1:
-                st.plotly_chart(fig_diagrama_solar(df_yr, año, 1), use_container_width=True)
+                fig1 = fig_diagrama_solar(df_yr, año, 1)
+                sel1 = st.plotly_chart(fig1, on_select="rerun", key=f"sel1_{año}", use_container_width=True)
+                
+                # Si seleccionas puntos, los agregamos a la lista negra
+                if sel1 and sel1["selection"]["point_indices"]:
+                    # Necesitamos el mismo DF ordenado que usa el gráfico para mapear índices
+                    d_plot = df_yr[(df_yr.index.month <= 6) & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"]).sort_values("kt")
+                    puntos = d_plot.index[sel1["selection"]["point_indices"]]
+                    st.session_state["manual_flags"].update(puntos)
+                    st.rerun()
+
+            # --- Semestre 2 ---
             with col_s2:
-                st.plotly_chart(fig_diagrama_solar(df_yr, año, 2), use_container_width=True)
-            st.caption(
-                "Cada punto = un minuto diurno coloreado por kt. "
-                "Manchas oscuras en posiciones fijas indican sombras sistemáticas."
-            )
+                fig2 = fig_diagrama_solar(df_yr, año, 2)
+                sel2 = st.plotly_chart(fig2, on_select="rerun", key=f"sel2_{año}", use_container_width=True)
+                
+                if sel2 and sel2["selection"]["point_indices"]:
+                    d_plot = df_yr[(df_yr.index.month >= 7) & (df_yr["CZ"] > 0)].dropna(subset=["kt", "azimutal", "altura_solar"]).sort_values("kt")
+                    puntos = d_plot.index[sel2["selection"]["point_indices"]]
+                    st.session_state["manual_flags"].update(puntos)
+                    st.rerun()
 
             # kt 2D
             st.plotly_chart(fig_kt_2d(df_yr, año), use_container_width=True)
             st.caption(
                 "Promedio de kt por hora y día del año. "
-                "Bandas oscuras recurrentes suelen indicar sombras estacionales."
             )
 
             # Flags opcionales
