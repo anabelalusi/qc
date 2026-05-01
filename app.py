@@ -266,12 +266,17 @@ def fig_serie(df: pd.DataFrame, titulo: str, año: int = None) -> go.Figure:
             buttons=buttons,
         )]
 
+    # Aplicamos primero la base
+    fig.update_layout(BASE_LAYOUT)
+    
+    # Luego aplicamos lo que sobreescribe o añade información
     fig.update_layout(
-        **BASE_LAYOUT,
         title=dict(text=titulo, font=dict(color="#e6edf3", size=12)),
-        xaxis_title="Fecha", yaxis_title="GHI (W m⁻²)",
+        xaxis_title="Fecha", 
+        yaxis_title="GHI (W m⁻²)",
         legend=dict(bgcolor=BG2, bordercolor=GRID, borderwidth=1),
-        height=370, xaxis=xaxis_cfg,
+        height=370, 
+        xaxis=xaxis_cfg, # Ahora no hay conflicto
         updatemenus=updatemenus,
     )
     return fig
@@ -296,10 +301,11 @@ def fig_diagrama_solar(df_yr: pd.DataFrame, año: int, semestre: int) -> go.Figu
         ),
         hovertemplate="az: %{x:.1f}°<br>alt: %{y:.1f}°<br>kt: %{marker.color:.3f}<extra></extra>",
     ))
+    fig.update_layout(BASE_LAYOUT)
     fig.update_layout(
-        **BASE_LAYOUT,
         title=dict(text=f"{año} — Diagrama solar ({label})", font=dict(color="#e6edf3", size=12)),
-        xaxis_title="Azimut (°, Sur=0  Oeste>0)", yaxis_title="Altura solar (°)",
+        xaxis_title="Azimut (°, Sur=0  Oeste>0)", 
+        yaxis_title="Altura solar (°)",
         yaxis={**BASE_LAYOUT["yaxis"], "range": [0, 90]},
         height=430,
     )
@@ -322,8 +328,8 @@ def fig_kt_2d(df_yr: pd.DataFrame, año: int) -> go.Figure:
         colorbar=dict(title="kt", thickness=12,
                       tickfont=dict(color=MUTED, size=10), titlefont=dict(color=MUTED)),
     ))
+    fig.update_layout(BASE_LAYOUT)
     fig.update_layout(
-        **BASE_LAYOUT,
         title=dict(text=f"{año} — kt 2D (hora vs día del año)", font=dict(color="#e6edf3", size=12)),
         xaxis={**BASE_LAYOUT["xaxis"], "tickvals": mes_doy, "ticktext": mes_nom, "title": "Día del año"},
         yaxis={**BASE_LAYOUT["yaxis"], "range": [4, 21], "title": "Hora solar"},
