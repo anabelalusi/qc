@@ -550,7 +550,7 @@ def render_flags_anuales(año: int, df_yr: pd.DataFrame) -> pd.DataFrame:
     with col_f2_num:
         limite_altura = st.number_input("Límite (°)", 0.0, 25.0, 7.0, key=f"f2_val_{año}")
 
-    df_out["flag_2"] = np.where(apply_f2 & (df_out["altura_solar"] < np.radians(limite_altura)), 1, 0)
+    df_out["flag_2"] = np.where(apply_f2 & (df_out["altura_solar"] > 0) & (df_out["altura_solar"] < np.radians(limite_altura)), 1, 0)
 
     # ─── 4. FLAG_3: ÍNDICE DE CLARIDAD kt ───────────────────────────────
     st.markdown(
