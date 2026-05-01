@@ -354,7 +354,7 @@ def fig_diagrama_solar(df_yr, año, semestre):
         marker=dict(
             color=d["kt"], cmin=0.1, cmax=1.0, size=2.2,
             colorscale=[[0, "#662506"], [0.5, "#ec7014"], [1, "#ffffd4"]], # YlOrBr rev
-            colorbar=dict(title=dict(text="$k_t$", font=dict(size=10)))
+            colorbar=dict(title=dict(text="kt", font=dict(size=10)))
         )
     ))
     fig.update_layout(BASE_LAYOUT)
@@ -427,7 +427,7 @@ def fig_kt_2d(df_yr: pd.DataFrame, año: int) -> go.Figure:
         colorscale='magma', # Tu escala de color original[cite: 1]
         zmin=vmin, zmax=vmax,
         colorbar=dict(
-            title=dict(text="$k_t$ (adim.)", font=dict(size=11)),
+            title=dict(text="kt (adim.)", font=dict(size=11)),
             thickness=15,
             len=0.9
         ),
@@ -437,7 +437,7 @@ def fig_kt_2d(df_yr: pd.DataFrame, año: int) -> go.Figure:
     # 4. Ajustes de Layout[cite: 1]
     fig.update_layout(BASE_LAYOUT)
     fig.update_layout(
-        title=dict(text=f"Mapa de $k_t$ — {año}", font=dict(size=13)),
+        title=dict(text=f"Mapa de kt — {año}", font=dict(size=13)),
         xaxis=dict(
             title=f"Día del año (1–{ndays})",
             range=[doy_min_data, doy_max_data],
